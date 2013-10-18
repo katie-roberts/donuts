@@ -1,0 +1,202 @@
+<!doctype html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>vanilla</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+        <!-- build:css(.tmp) styles/main.css -->
+        <link rel="stylesheet" href="styles/main.css">
+        <!-- endbuild -->
+        <!-- build:js scripts/vendor/modernizr.js -->
+        <script src="bower_components/modernizr/modernizr.js"></script>
+        <!-- endbuild -->
+    </head>
+    <body onLoad="getTables();">
+    <style>
+
+        body {
+            font: 10px sans-serif;
+        }
+
+        .arc path {
+            stroke: #fff;
+        }
+
+    </style>
+        <!--[if lt IE 10]>
+            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+
+        <div class="container">
+            <div class="header">
+                <ul class="nav nav-pills pull-right">
+                    <button class="active" ><a href = "index2.html">Change data content</a></button>
+                </ul>
+                <h3 class="text-muted">DONUTS</h3>
+            </div>
+
+        </div>
+
+
+        <!-- build:js scripts/vendor.js -->
+        <!-- bower:js -->
+        <script src="bower_components/jquery/jquery.js"></script>
+        <!-- endbower -->
+        <!-- endbuild -->
+
+        <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
+        <script>
+            (function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=
+            function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;
+            e=o.createElement(i);r=o.getElementsByTagName(i)[0];
+            e.src='//www.google-analytics.com/analytics.js';
+            r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));
+            ga('create','UA-XXXXX-X');ga('send','pageview');
+        </script>
+
+        <!-- build:js scripts/main.js -->
+        <script data-main="scripts/main" src="bower_components/requirejs/require.js"></script>
+        <!-- endbuild -->
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script>
+
+        var width = 960,
+                height = 500,
+                radius = Math.min(width, height) / 2;
+
+        var arc = d3.svg.arc()
+                .outerRadius(radius - 10)
+                .innerRadius(radius - 110);
+
+        var smallDonut = d3.svg.arc()
+                .outerRadius(radius/2 + 10)
+                .innerRadius(radius/2 - 90);
+
+        var pie = d3.layout.pie()
+                .sort(null)
+                .value(function(d) { return d.points; });
+
+        var mainSVG = d3.select("body").append("svg")
+                .attr("width", width)
+                .attr("height", height);
+
+        var svg = mainSVG.append("g").attr("id", "svg")
+                .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+        var svgSmallDonut = mainSVG.append("g").attr("id", "svgSmallDonut")
+                .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+        var colourHash = {};
+        var orderHash = {};
+
+       function updateData(){
+           console.log("!!!!!")
+            loadXMLDoc("http://127.0.0.1/~roberk24/premmentions.php?after=2011-08-17&before=2012-05-20&limit=7", rebuildOuterDonut);
+        }
+
+        function showInnerDonut(json) {
+            var data = JSON.parse(json).table.slice(0,7);
+
+            var i = 0;
+            data.forEach(function(d) {
+                d.points = +d.points;
+                colourHash[d.thing] = d.colour;
+                orderHash[d.thing] = i++;
+            });
+
+            var g = svgSmallDonut.selectAll(".arc")
+                    .data(pie(data))
+                    .enter().append("g")
+                    .attr("class", "arc");
+
+            g.append("path")
+                    .attr("d", smallDonut)
+                    .style("fill", function(d) { return d.data.colour; });
+
+            g.append("text")
+                    .attr("transform", function(d) { return "translate(" + smallDonut.centroid(d) + ")"; })
+                    .attr("dy", ".35em")
+                    .style("text-anchor", "middle")
+                    .text(function(d) { return d.data.label; });
+
+            loadXMLDoc("http://127.0.0.1/~roberk24/premmentions.php?after=2012-08-17&before=2013-05-20&limit=7", showOuterDonut);
+        }
+
+        function rebuildOuterDonut(json) {
+            // ???????
+            while (svg.childNodes.length > 0)
+                svg.removeChild(svg.childIndex(0));
+            showOuterDonut(json);
+        }
+
+        function showOuterDonut(json) {
+            var data = JSON.parse(json).occurrences;
+
+            data.forEach(function(d) {
+                d.points = +d.occurrence;
+                if (orderHash[d.thing] != null) {
+                    d.order =  orderHash[d.thing];
+                } else {
+                    d.order =  1000;
+                }
+            });
+
+            data.sort(function(a,b) {
+                var x = a['order']; var y = b['order'];
+                return ((x < y) ? -1 : ((x > y) ? 1 : 0));
+            });
+
+            var g = svg.selectAll(".arc")
+                    .data(pie(data))
+                    .enter().append("g")
+                    .attr("class", "arc")
+
+            g.append("path")
+                    .attr("d", arc)
+                    .style("fill", function(d) { return getColour(d.data.thing) });
+
+            g.append("text")
+                    .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
+                    .attr("dy", ".35em")
+
+                    .style("text-anchor", "middle")
+                    .text(function(d) { return d.data.label; });
+
+        }
+
+        function getColour(thing) {
+            if (colourHash[thing] != null)
+                return colourHash[thing];
+            return "#999999";
+        }
+
+        function loadXMLDoc(url, callback) {
+            var xmlhttp;
+            if (window.XMLHttpRequest) {// code for IE7+, Firefox, Chrome, Opera, Safari
+                xmlhttp=new XMLHttpRequest();
+            } else {// code for IE6, IE5
+                xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+            }
+            xmlhttp.onreadystatechange=function() {
+                if (xmlhttp.readyState==4 && xmlhttp.status==200) {
+                    callback(xmlhttp.responseText);
+                }
+            }
+            xmlhttp.open("GET",url,true);
+            xmlhttp.send();
+        }
+
+        function getTables() {
+            loadXMLDoc("http://127.0.0.1/~roberk24/premtable.php", showInnerDonut);
+        }
+
+    </script>
+</body>
+</html>
